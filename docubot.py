@@ -9,6 +9,7 @@ Core DocuBot class responsible for:
 
 import os
 import glob
+import re
 import string
 from collections import Counter
 
@@ -122,10 +123,18 @@ class DocuBot:
     def _tokenize(self, text):
         """
         Splits text into lowercase words with surrounding punctuation stripped.
+        Also splits on "_" and "-" so identifiers like "auth_utils.py" or
+        "generate_access_token" contribute their component words (e.g. "auth",
+        "generate", "token") instead of staying glued together.
         """
         words = text.lower().split()
-        tokens = [word.strip(string.punctuation) for word in words]
-        return [token for token in tokens if token]
+        tokens = []
+        for word in words:
+            for part in re.split(r"[_-]+", word):
+                part = part.strip(string.punctuation)
+                if part:
+                    tokens.append(part)
+        return tokens
 
     def _query_tokens(self, query):
         """
