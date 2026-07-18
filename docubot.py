@@ -183,13 +183,22 @@ class DocuBot:
         for token in query_tokens:
             candidate_filenames.update(self.index.get(token, []))
 
+        # Require at least this many distinct query words to actually appear in
+        # a chunk, so one repeated word can't fake relevance for the rest of a
+        # multi-word query. Short queries just need their one word to match.
+        min_coverage = min(2, len(query_tokens))
+
         scored = []
         for filename, text in self.chunks:
             if filename not in candidate_filenames:
                 continue
             score = self.score_document(query, text)
-            if score > 0:
-                scored.append((score, filename, text))
+            if score == 0:
+                continue
+            matched_tokens = query_tokens & set(self._tokenize(text))
+            if len(matched_tokens) < min_coverage:
+                continue
+            scored.append((score, filename, text))
 
         scored.sort(key=lambda item: item[0], reverse=True)
         results = [(filename, text) for _, filename, text in scored]
